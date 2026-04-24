@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+  <title>הורדת שירים מיוטיוב</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap">
+</head>
+<body>
+  <div class="container">
+    <h1>הורדת שירים מיוטיוב</h1>
+    <form id="downloadForm">
+      <input type="url" id="urlInput" name="url" placeholder="הדבק כאן קישור ליוטיוב" required>
+      <button type="submit" id="submitBtn">
+        <span id="btnText">הורדה</span>
+        <div id="loader" class="loader"></div>
+      </button>
+      <p id="statusMessage"></p>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('downloadForm');
+    const statusMsg = document.getElementById('statusMessage');
+    const btn = document.getElementById('submitBtn');
+
+    form.onsubmit = async (e) => {
+      e.preventDefault(); // מונע מהדף להתרענן
+
+      const formData = new FormData();
+      formData.append('url', document.getElementById('urlInput').value);
+
+      // הצגת מצב טעינה
+      statusMsg.innerText = "מעבד את הבקשה ומוריד מהשרת, נא להמתין...";
+      statusMsg.className = "downloading";
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/download', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) throw new Error('ההורדה נכשלה');
+
+        // קבלת שם הקובץ מהכותרות (Header) שהשרת שלח
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let fileName = 'song.mp3';
+        if (contentDisposition) {
+            const match = contentDisposition.match(/filename="(.+)"/);
+            if (match) fileName = decodeURIComponent(match[1]);
+        }
+
+        // יצירת "קישור וירטואלי" להורדת הקובץ למחשב
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        statusMsg.innerText = "השיר הורד בהצלחה!";
+        statusMsg.className = "success";
+      } catch (error) {
+        statusMsg.innerText = "שגיאה: וודא שהקישור תקין.";
+        statusMsg.className = "error";
+      } finally {
+        btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
